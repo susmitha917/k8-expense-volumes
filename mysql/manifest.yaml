@@ -1,3 +1,4 @@
+
 ---
 apiVersion: v1
 kind: Service
@@ -14,3 +15,59 @@ spec:
   - protocol: TCP
     port: 3306 #service-port
     targetPort: 3306 #target-port
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: expense
+spec:
+  selector:
+    component: mysql
+    project: expense
+    tier: db 
+  ports:
+  - protocol: TCP
+    port: 3306 #service-port
+    targetPort: 3306 #target-port
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+  namespace: expense
+spec:
+  selector:
+    matchLabels:
+      # has to match .spec.template.metadata.labels
+      component: mysql
+      project: expense
+      tier: db 
+  serviceName: "mysql-headless" # provide headless service name
+  replicas: 2 # by default is 1
+  template:
+    metadata:
+      labels:
+       # has to match .spec.selector.matchLabels
+        component: mysql
+        project: expense
+        tier: db 
+    spec:
+      containers:
+      - name: mysql
+        image: susmitha925/mysql:v1.0
+        imagePullPolicy: Always
+        volumeMounts:
+        - name: mysql
+          mountPath: /var/lib/mysql
+  # PVC declaration, it is mandatory
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "expense-ebs"
+      resources:
+        requests:
+          storage: 1G
